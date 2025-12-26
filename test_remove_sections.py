@@ -6,10 +6,11 @@ Tests for remove-sections script.
 import pytest
 import sys
 import os
+import tempfile
 
 # Import functions from remove-sections
 sys.path.insert(0, os.path.dirname(__file__))
-from remove_sections import parse_timestamp, parse_section, coalesce_sections
+from remove_sections import parse_timestamp, parse_section, coalesce_sections, parse_sections_file
 
 
 class TestParseTimestamp:
@@ -161,6 +162,111 @@ class TestSegmentCalculation:
             segments_to_keep.append((last_end, duration))
 
         assert segments_to_keep == [(0.0, 50.0)]
+
+
+class TestParseSectionsFile:
+    """Test parsing sections from a file."""
+
+    def test_simple_file(self):
+        """Test parsing a simple file with sections."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write("5:18.5-7:00.7\n")
+            f.write("12:11.2-13:15\n")
+            f.name_to_delete = f.name
+
+        try:
+            sections = parse_sections_file(f.name_to_delete)
+            assert sections == [(318.5, 420.7), (731.2, 795.0)]
+        finally:
+            os.unlink(f.name_to_delete)
+
+    def test_file_with_comments(self):
+        """Test parsing a file with comments."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write("# Remove ads\n")
+            f.write("5:18.5-7:00.7\n")
+            f.write("# Remove outro\n")
+            f.write("45:30-\n")
+            f.name_to_delete = f.name
+
+        try:
+            sections = parse_sections_file(f.name_to_delete)
+            assert sections == [(318.5, 420.7), (2730.0, None)]
+        finally:
+            os.unlink(f.name_to_delete)
+
+    def test_file_with_blank_lines(self):
+        """Test parsing a file with blank lines."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write("5:18.5-7:00.7\n")
+            f.write("\n")
+            f.write("   \n")
+            f.write("12:11.2-13:15\n")
+            f.name_to_delete = f.name
+
+        try:
+            sections = parse_sections_file(f.name_to_delete)
+            assert sections == [(318.5, 420.7), (731.2, 795.0)]
+        finally:
+            os.unlink(f.name_to_delete)
+
+    def test_file_with_mixed_content(self):
+        """Test parsing a file with comments, blank lines, and sections."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write("# Remove ads\n")
+            f.write("5:18.5-7:00.7\n")
+            f.write("\n")
+            f.write("# Another ad\n")
+            f.write("12:11.2-13:15\n")
+            f.write("   \n")
+            f.write("-0:10\n")
+            f.write("# Remove outro\n")
+            f.write("45:30-\n")
+            f.name_to_delete = f.name
+
+        try:
+            sections = parse_sections_file(f.name_to_delete)
+            assert sections == [(318.5, 420.7), (731.2, 795.0), (None, 10.0), (2730.0, None)]
+        finally:
+            os.unlink(f.name_to_delete)
+
+    def test_file_with_invalid_line(self):
+        """Test that invalid lines raise an error."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write("5:18.5-7:00.7\n")
+            f.write("invalid line here\n")
+            f.write("12:11.2-13:15\n")
+            f.name_to_delete = f.name
+
+        try:
+            with pytest.raises(ValueError, match=r"Error in .* line 2"):
+                parse_sections_file(f.name_to_delete)
+        finally:
+            os.unlink(f.name_to_delete)
+
+    def test_empty_file(self):
+        """Test parsing an empty file."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.name_to_delete = f.name
+
+        try:
+            sections = parse_sections_file(f.name_to_delete)
+            assert sections == []
+        finally:
+            os.unlink(f.name_to_delete)
+
+    def test_file_only_comments(self):
+        """Test parsing a file with only comments."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write("# Comment 1\n")
+            f.write("# Comment 2\n")
+            f.name_to_delete = f.name
+
+        try:
+            sections = parse_sections_file(f.name_to_delete)
+            assert sections == []
+        finally:
+            os.unlink(f.name_to_delete)
 
 
 if __name__ == '__main__':

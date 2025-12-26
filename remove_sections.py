@@ -70,6 +70,39 @@ def coalesce_sections(sections: List[Tuple[float, float]]) -> List[Tuple[float, 
     return merged
 
 
+def parse_sections_file(filepath: str) -> List[Tuple[Optional[float], Optional[float]]]:
+    """Parse sections from a file.
+
+    File format:
+    - One section per line (START-END format)
+    - Lines starting with # are comments
+    - Blank lines (or whitespace-only) are ignored
+    - Invalid lines raise ValueError
+    """
+    sections = []
+    with open(filepath, 'r') as f:
+        for line_num, line in enumerate(f, 1):
+            # Strip whitespace
+            line = line.strip()
+
+            # Skip blank lines
+            if not line:
+                continue
+
+            # Skip comments
+            if line.startswith('#'):
+                continue
+
+            # Try to parse as section
+            try:
+                section = parse_section(line)
+                sections.append(section)
+            except ValueError as e:
+                raise ValueError(f"Error in {filepath} line {line_num}: {e}")
+
+    return sections
+
+
 def get_video_duration(input_file: str) -> float:
     """Get video duration in seconds using ffprobe."""
     cmd = [
@@ -90,7 +123,8 @@ def main():
         description='Remove sections from a video file without re-encoding'
     )
     parser.add_argument('input', help='Input video file')
-    parser.add_argument('sections', nargs='+', help='Sections to remove (format: START-END)')
+    parser.add_argument('sections', nargs='*', help='Sections to remove (format: START-END)')
+    parser.add_argument('-f', '--file', help='File containing sections to remove (one per line)')
     parser.add_argument('--preserve-intermediate-files', action='store_true',
                         help='Keep intermediate files')
     parser.add_argument('--strict', action='store_true',
@@ -98,18 +132,27 @@ def main():
 
     args = parser.parse_args()
 
+    # Must have either sections or file
+    if not args.sections and not args.file:
+        parser.error("Must provide either sections or -f/--file")
+
     # Check if last argument is an output file (doesn't contain '-')
     output_file = None
-    sections_args = args.sections
-    if '-' not in args.sections[-1]:
-        output_file = args.sections[-1]
-        sections_args = args.sections[:-1]
+    sections_args = args.sections if args.sections else []
+    if sections_args and '-' not in sections_args[-1]:
+        output_file = sections_args[-1]
+        sections_args = sections_args[:-1]
 
-    # Parse sections
+    # Parse sections from command line
     sections = []
     for section_str in sections_args:
         start, end = parse_section(section_str)
         sections.append((start, end))
+
+    # Parse sections from file if provided
+    if args.file:
+        file_sections = parse_sections_file(args.file)
+        sections.extend(file_sections)
 
     # Get video duration
     duration = get_video_duration(args.input)

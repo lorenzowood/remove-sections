@@ -7,6 +7,7 @@ A command-line tool to remove sections from video files without re-encoding. Per
 - **No re-encoding**: Uses ffmpeg's stream copy to maintain original quality
 - **Flexible timestamp formats**: Support for seconds (`90.5`), minutes:seconds (`5:18.5`), or hours:minutes:seconds (`1:05:30`)
 - **Multiple sections**: Remove multiple segments in a single command
+- **File input**: Read sections from a file with `-f` flag
 - **Smart merging**: Automatically coalesces overlapping sections
 - **Partial ranges**: Omit start (`-0:10`) or end (`15:22-`) timestamps
 - **Strict mode**: Optional validation for out-of-bounds sections
@@ -67,6 +68,42 @@ Remove to end:
 remove-sections programme.mkv 15:22-
 ```
 
+### Using a Sections File
+
+Create a text file with one section per line:
+
+**sections.txt:**
+```
+# Remove ads
+5:18.5-7:00.7
+12:11.2-13:15
+
+# Remove outro
+45:30-
+```
+
+Then use it with the `-f` flag:
+```bash
+remove-sections programme.mkv -f sections.txt
+# Creates: programme-sections-removed.mkv
+```
+
+Specify output filename:
+```bash
+remove-sections input.mp4 -f sections.txt output.mp4
+```
+
+Combine file sections with command-line sections:
+```bash
+remove-sections input.mp4 -f sections.txt 10:00-11:00 output.mp4
+```
+
+**File format:**
+- One section per line (START-END format)
+- Lines starting with `#` are comments
+- Blank lines are ignored
+- Invalid lines will cause an error
+
 ### Timestamp Formats
 
 All of these formats are supported:
@@ -77,6 +114,7 @@ All of these formats are supported:
 
 ### Options
 
+- `-f`, `--file <filename>`: Read sections from a file (one section per line)
 - `--strict`: Error if any section falls outside the video duration (default: clips to video length)
 - `--preserve-intermediate-files`: Keep intermediate part files after processing
 
