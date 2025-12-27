@@ -104,6 +104,58 @@ remove-sections input.mp4 -f sections.txt 10:00-11:00 output.mp4
 - Blank lines are ignored
 - Invalid lines will cause an error
 
+## MPV Integration
+
+For an efficient workflow, you can use mpv to scrub through videos, mark sections to remove, and trigger remove-sections directly from the video player.
+
+### Setup
+
+1. Install mpv if you haven't already:
+```bash
+   brew install mpv
+```
+
+2. Copy the mpv configuration files from this repository:
+```bash
+   mkdir -p ~/.config/mpv
+   cp -r mpv-config/* ~/.config/mpv/
+```
+
+   This installs:
+   - `mpv.conf` - Configuration for persistent OSD with decimal timestamps
+   - `scripts/mark-sections.lua` - Lua script for marking and removing sections
+
+### Usage
+
+1. Open your video in mpv:
+```bash
+   mpv your-video.ts
+```
+
+2. Navigate through the video:
+   - Arrow keys: Skip forward/backward
+   - `.` (period): Step forward one frame
+   - `,` (comma): Step backward one frame
+   - `o`: Toggle OSD display (timestamps shown by default)
+
+3. Mark sections to remove:
+   - `[` - Mark start of section to remove
+   - `]` - Mark end of section to remove
+   - Repeat for as many sections as needed
+
+4. Process the video:
+   - `w` - Write sections to a `.sections` file (for manual processing later)
+   - `r` - Run remove-sections immediately with marked sections
+
+The output file will be created in the same directory as your input file with `-sections-removed` appended to the filename.
+
+### Notes
+
+- Sections are stored in memory until you press `w` or `r`
+- The sections list is automatically cleared when you load a new file
+- The video player window stays open at the end of the video (press `q` to quit)
+- Decimal timestamps are displayed for frame-accurate section marking
+
 ### Timestamp Formats
 
 All of these formats are supported:
