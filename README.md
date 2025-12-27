@@ -122,7 +122,7 @@ For an efficient workflow, you can use mpv to scrub through videos, mark section
 ```
 
    This installs:
-   - `mpv.conf` - Configuration for persistent OSD with decimal timestamps
+   - `mpv.conf` - Configuration for persistent OSD with decimal timestamps and forcing caching so that you can seamlessly step forward and backwards to find the right points to mark
    - `scripts/mark-sections.lua` - Lua script for marking and removing sections
 
 ### Usage
